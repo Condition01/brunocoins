@@ -81,7 +81,7 @@ class BrunoCoinContract : Contract {
                 println("passou content")
                 //signers
                 val oldOwner = bCoinTransferState.owner
-                val newOwner = bCoinTransferState.owner
+                val newOwner = bCoinTransferState.newOwner
 
                 "Todos os envolvidos devem assinar a transaction" using (command.signers.contains(oldOwner.owningKey)
                                                                         .and(command.signers.contains(newOwner.owningKey)))

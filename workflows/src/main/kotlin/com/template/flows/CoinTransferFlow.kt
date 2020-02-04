@@ -40,7 +40,7 @@ object TransferFlow{
 
         override val progressTracker = tracker()
 
-
+        @Suspendable
         override fun call(): SignedTransaction {
             val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
 

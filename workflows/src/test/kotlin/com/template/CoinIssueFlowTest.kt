@@ -2,6 +2,7 @@ package com.template
 
 import com.template.flows.IssueFlowInitiator
 import com.template.flows.TransferFlow
+import com.template.states.BrunoCoinState
 import net.corda.core.contracts.TransactionVerificationException
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.utilities.getOrThrow
@@ -14,30 +15,15 @@ import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertFailsWith
 
-class CoinIssueFlowTest{
-    private lateinit var network : MockNetwork
-
-    private lateinit var nodeA : StartedMockNode
-    private lateinit var nodeB : StartedMockNode
-    private lateinit var notaryA : StartedMockNode
+class CoinIssueFlowTest : BaseTest(){
 
     @Before
-    fun setup() {
-        network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = listOf(
-                TestCordapp.findCordapp("com.template.contracts"),
-                TestCordapp.findCordapp("com.template.flows")
-        )))
-        nodeA = network.createPartyNode(CordaX500Name("BrunoCompany", "São Paulo", "BR"))
-        nodeB = network.createPartyNode(CordaX500Name("CarlãoCompany", "Rio de Janeiro", "BR"))
-        notaryA = network.createPartyNode(CordaX500Name("Notary", "São Paulo", "BR"))
-
-//        listOf(nodeA, nodeB).forEach { it.registerInitiatedFlow( CoinIssueFlow::class.java ) }
-        listOf(nodeA, nodeB).forEach { it.registerInitiatedFlow(TransferFlow.TransferResponderFlow::class.java) }
-        network.runNetwork()
+    override fun setup() {
+      super.setup()
     }
 
     @After
-    fun tearDown() = network.stopNodes()
+    override fun tearDown() = super.tearDown()
 
     @Test
     fun vanillaCoinIssueTest(){
@@ -45,6 +31,10 @@ class CoinIssueFlowTest{
         val future = nodeA.startFlow(coinIssueFlow)
         network.runNetwork()
         val signedTransaction = future.getOrThrow()
+
+
+        val allStates = nodeA.allStates<BrunoCoinState>()
+
     }
 
     @Test
@@ -54,5 +44,8 @@ class CoinIssueFlowTest{
         network.runNetwork()
         assertFailsWith< TransactionVerificationException> { future.getOrThrow() }
     }
+//
+//    @Test
+//    fun testTheVault
 
 }

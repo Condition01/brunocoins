@@ -5,6 +5,7 @@ import com.template.contracts.BrunoCoinContract
 import com.template.states.BrunoCoinState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
@@ -16,7 +17,7 @@ import net.corda.core.utilities.ProgressTracker
 // *********
 @InitiatingFlow
 @StartableByRPC
-class IssueFlowInitiator(val amount : Double) : FlowLogic<SignedTransaction>() {
+class IssueFlowInitiator(val amount : Double) : FlowLogic<UniqueIdentifier>() {
 
     companion object {
         object GENERATING_TRANSACTION : ProgressTracker.Step("Generating transaction based on new BrunoCoin.")
@@ -34,7 +35,7 @@ class IssueFlowInitiator(val amount : Double) : FlowLogic<SignedTransaction>() {
     override val progressTracker = tracker()
 
     @Suspendable
-    override fun call() : SignedTransaction {
+    override fun call() : UniqueIdentifier {
         // Initiator flow logic goes here.
         val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
 
@@ -51,7 +52,9 @@ class IssueFlowInitiator(val amount : Double) : FlowLogic<SignedTransaction>() {
         progressTracker.currentStep = SIGNING_TRANSACTION
         val signedTransaction = serviceHub.signInitialTransaction(tx)
 
-        return subFlow(FinalityFlow(signedTransaction, listOf()))
+        subFlow(FinalityFlow(signedTransaction, listOf()))
+
+        return bIssueState.linearId
     }
 
     private fun buildTransaction(bIssueState: BrunoCoinState,

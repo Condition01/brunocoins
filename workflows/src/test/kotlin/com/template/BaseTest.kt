@@ -11,6 +11,8 @@ import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.DEFAULT_PAGE_NUM
+import net.corda.core.node.services.vault.PageSpecification
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.node.MockNetwork
@@ -61,5 +63,10 @@ open class BaseTest{
         return services.vaultService.queryBy<T>(queryAllStatusServiceProvider)
     }
 
+    fun StartedMockNode.getOneUnconsummedState () : Vault.Page<ContractState> {
+        return services.vaultService.queryBy<ContractState>(
+                QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED),
+                PageSpecification(DEFAULT_PAGE_NUM, 1))
+    }
 
 }

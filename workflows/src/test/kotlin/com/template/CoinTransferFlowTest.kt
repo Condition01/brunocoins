@@ -25,12 +25,12 @@ class CoinTransferFlowTest : BaseTest(){
     fun preIssueAValue(){
         val coinIssueFlow = IssueFlowInitiator(300.00)
         val future = nodeA.startFlow(coinIssueFlow)
-         val signedTransaction = future.getOrThrow()
-        network.runNetwork()
-//        val coinIssueFlow2 = IssueFlowInitiator(300.00)
-//        val future2 = nodeA.startFlow(coinIssueFlow2)
-//        val signedTransaction2 = future2.getOrThrow()
+        val signedTransaction = future.getOrThrow()
 //        network.runNetwork()
+        val coinIssueFlow2 = IssueFlowInitiator(300.00)
+        val future2 = nodeB.startFlow(coinIssueFlow2)
+        val signedTransaction2 = future2.getOrThrow()
+        network.runNetwork()
 
     }
 

@@ -44,11 +44,16 @@ object TransferFlow{
         @Suspendable
         override fun call(): SignedTransaction {
             val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
+//            val newOwnerNodeInfo = serviceHub.networkMapCache.getNodeByLegalIdentity(newOwner)
+
+            val otherPartySession = initiateFlow(newOwner)
+
 
             val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
             progressTracker.currentStep = GENERATING_TRANSACTION
-            val txBuilder = buildTransaction(listMoneyStateAndRef, notary)
+            var txBuilder = buildTransaction(listMoneyStateAndRef, notary)
+            txBuilder = otherPartySession.sendAndReceive<TransactionBuilder>(txBuilder).unwrap{it}
 
             progressTracker.currentStep = VERIFYING_TRANSACTION
 
@@ -60,20 +65,12 @@ object TransferFlow{
 
             progressTracker.currentStep = GETTING_OTHER_SIGNATURES
 
-            val otherPartySession = initiateFlow(newOwner)
-
-            otherPartySession.send(signedTransaction)
-
-//            val fullySignedTransaction = subFlow(
-//                    CollectSignaturesFlow(
-//                            partialSignedTransaction,
-//                            setOf(otherPartySession)
-////                            GETTING_OTHER_SIGNATURES.childProgressTracker()
-//                    ))
 
             progressTracker.currentStep = FINALISING_TRANSACTION
 
-            return subFlow(FinalityFlow(signedTransaction, setOf(otherPartySession), FINALISING_TRANSACTION.childProgressTracker()))
+
+            otherPartySession.send(signedTransaction)
+            return subFlow(FinalityFlow(signedTransaction, setOf(otherPartySession)))
         }
 
         private fun buildTransaction(listMoneyStateAndRef: List<StateAndRef<BrunoCoinState>>, notary: Party): TransactionBuilder {
@@ -97,18 +94,6 @@ object TransferFlow{
             return txBuilder
         }
 
-//    private fun gettingStatesToPay() : MutableCollection<StateAndRef<BrunoCoinState>>{
-//        var listOfMoneyStatesFiltered = mutableListOf<StateAndRef<BrunoCoinState>>()
-//        var totalAmount = 0.00
-//        val unconsumedCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
-//        val listOfMoneyStates = serviceHub.vaultService.queryBy<BrunoCoinState>(unconsumedCriteria).states.forEach {
-//            totalAmount += it.state.data.amount
-//            listOfMoneyStatesFiltered.add(it)
-//            if (totalAmount >= amount) return@forEach
-//        }
-//        return listOfMoneyStatesFiltered
-//    }
-
     }
 
     @InitiatedBy(CoinTransferFlow::class)
@@ -116,32 +101,18 @@ object TransferFlow{
 
         companion object {
 
-//            object SIGNING_TRANSACTION : ProgressTracker.Step("CounterParty singing the transaction..")
             object VERIFYING_TRANSACTION : ProgressTracker.Step("Counterparty verifying contract constraints.")
             object  FINALISING_TRANSACTION :  ProgressTracker.Step("Counterparty finalising the transaction")
 
             fun tracker() = ProgressTracker(
-//                    SIGNING_TRANSACTION
+                    VERIFYING_TRANSACTION,
+                    FINALISING_TRANSACTION
             )
         }
         override val progressTracker = tracker()
 
         @Suspendable
         override fun call(): SignedTransaction {
-
-//            val signedTransactionFlow = object : SignTransactionFlow(otherPartySession) {
-//                override fun checkTransaction(stx: SignedTransaction) = requireThat {
-////                    val output = stx.tx.outputs[0].data
-////                    "This must be a BrunoCoin transaction" using (output is BrunoCoinState)
-////
-////                    val bCoinOutput = output as BrunoCoinState
-////                    "The value of the transaction must be positive" using (bCoinOutput.amount > 0)
-//                }
-//            }
-//            val txId = subFlow(signedTransactionFlow).id
-//            otherPartySession.receive<>()
-
-
 
             fun verifyTx(sgdTx : SignedTransaction) = requireThat {
                 "O output precisa ser do tipo BrunoCoinState"  using (sgdTx.tx.outputStates[0] is BrunoCoinState)
@@ -166,7 +137,22 @@ object TransferFlow{
             verifyTx(sgdTx)
 
             progressTracker.currentStep = FINALISING_TRANSACTION
+
             return subFlow(ReceiveFinalityFlow(otherPartySession/*, expectedTxId = txId*/))
+        }
+    }
+
+    @InitiatedBy(CoinTransferFlow::class)
+    class MoneyReferenceFlow(val otherPartySession: FlowSession) : FlowLogic<TransactionBuilder>() {
+        override fun call(): TransactionBuilder {
+            val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
+            val txBuilder = otherPartySession.receive<TransactionBuilder>().unwrap{ it }
+            return if(listMoneyStateAndRef.isNotEmpty()){
+                txBuilder.addInputState(listMoneyStateAndRef.single())
+                txBuilder
+            }else{
+                txBuilder
+            }
         }
     }
 }

@@ -12,6 +12,7 @@ import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import net.corda.core.utilities.unwrap
 
 object TransferFlow{
     @InitiatingFlow
@@ -55,22 +56,24 @@ object TransferFlow{
 
             progressTracker.currentStep = SIGNING_TRANSACTION
 
-            val partialSignedTransaction = serviceHub.signInitialTransaction(txBuilder)
+            val signedTransaction = serviceHub.signInitialTransaction(txBuilder)
 
             progressTracker.currentStep = GETTING_OTHER_SIGNATURES
 
             val otherPartySession = initiateFlow(newOwner)
 
-            val fullySignedTransaction = subFlow(
-                    CollectSignaturesFlow(
-                            partialSignedTransaction,
-                            setOf(otherPartySession)
-//                            GETTING_OTHER_SIGNATURES.childProgressTracker()
-                    ))
+            otherPartySession.send(signedTransaction)
+
+//            val fullySignedTransaction = subFlow(
+//                    CollectSignaturesFlow(
+//                            partialSignedTransaction,
+//                            setOf(otherPartySession)
+////                            GETTING_OTHER_SIGNATURES.childProgressTracker()
+//                    ))
 
             progressTracker.currentStep = FINALISING_TRANSACTION
 
-            return subFlow(FinalityFlow(fullySignedTransaction, setOf(otherPartySession), FINALISING_TRANSACTION.childProgressTracker()))
+            return subFlow(FinalityFlow(signedTransaction, setOf(otherPartySession), FINALISING_TRANSACTION.childProgressTracker()))
         }
 
         private fun buildTransaction(listMoneyStateAndRef: List<StateAndRef<BrunoCoinState>>, notary: Party): TransactionBuilder {
@@ -80,7 +83,7 @@ object TransferFlow{
                     newOwner = newOwner,
                     amount = amount
             )
-            val txCommand = Command(BrunoCoinContract.Commands.Transfer(), bCoinTransferOutputState.participants.map { it.owningKey })
+            val txCommand = Command(BrunoCoinContract.Commands.Transfer(), serviceHub.myInfo.legalIdentities.first().owningKey)
             val txBuilder = TransactionBuilder(notary)
                     .addOutputState(bCoinOutPutState)
                     .addOutputState(bCoinTransferOutputState, BrunoCoinContract.ID)
@@ -112,10 +115,13 @@ object TransferFlow{
     class TransferResponderFlow(val otherPartySession: FlowSession) : FlowLogic<SignedTransaction>() {
 
         companion object {
-            object SIGNING_TRANSACTION : ProgressTracker.Step("CounterParty singing the transaction..")
+
+//            object SIGNING_TRANSACTION : ProgressTracker.Step("CounterParty singing the transaction..")
+            object VERIFYING_TRANSACTION : ProgressTracker.Step("Counterparty verifying contract constraints.")
+            object  FINALISING_TRANSACTION :  ProgressTracker.Step("Counterparty finalising the transaction")
 
             fun tracker() = ProgressTracker(
-                    SIGNING_TRANSACTION
+//                    SIGNING_TRANSACTION
             )
         }
         override val progressTracker = tracker()
@@ -123,18 +129,44 @@ object TransferFlow{
         @Suspendable
         override fun call(): SignedTransaction {
 
-            progressTracker.currentStep = SIGNING_TRANSACTION
-            val signedTransactionFlow = object : SignTransactionFlow(otherPartySession) {
-                override fun checkTransaction(stx: SignedTransaction) = requireThat {
-//                    val output = stx.tx.outputs[0].data
-//                    "This must be a BrunoCoin transaction" using (output is BrunoCoinState)
-//
-//                    val bCoinOutput = output as BrunoCoinState
-//                    "The value of the transaction must be positive" using (bCoinOutput.amount > 0)
-                }
+//            val signedTransactionFlow = object : SignTransactionFlow(otherPartySession) {
+//                override fun checkTransaction(stx: SignedTransaction) = requireThat {
+////                    val output = stx.tx.outputs[0].data
+////                    "This must be a BrunoCoin transaction" using (output is BrunoCoinState)
+////
+////                    val bCoinOutput = output as BrunoCoinState
+////                    "The value of the transaction must be positive" using (bCoinOutput.amount > 0)
+//                }
+//            }
+//            val txId = subFlow(signedTransactionFlow).id
+//            otherPartySession.receive<>()
+
+
+
+            fun verifyTx(sgdTx : SignedTransaction) = requireThat {
+                "O output precisa ser do tipo BrunoCoinState"  using (sgdTx.tx.outputStates[0] is BrunoCoinState)
+
+                val bCoinState = sgdTx.tx.outputStates[0] as BrunoCoinState
+
+                "O output2 precisa ser do tipo BrunoCoinTransferState" using (sgdTx.tx.outputStates[1] is BrunoCoinTransferState)
+
+                val bCoinTransferState = sgdTx.tx.outputStates[1] as BrunoCoinTransferState
+
+                "Os valores propostos na transação deve ser maior que 0" using (bCoinState.amount > 0
+                        && bCoinTransferState.amount > 0)
+
+                "Os valores propostos na transação e o valor enviados devem ser iguais" using (bCoinState.amount == bCoinTransferState.amount)
             }
-            val txId = subFlow(signedTransactionFlow).id
-            return subFlow(ReceiveFinalityFlow(otherPartySession, expectedTxId = txId))
+
+
+            val sgdTx = otherPartySession.receive<SignedTransaction>().unwrap{ it }
+
+            progressTracker.currentStep = VERIFYING_TRANSACTION
+
+            verifyTx(sgdTx)
+
+            progressTracker.currentStep = FINALISING_TRANSACTION
+            return subFlow(ReceiveFinalityFlow(otherPartySession/*, expectedTxId = txId*/))
         }
     }
 }

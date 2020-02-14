@@ -81,10 +81,8 @@ class BrunoCoinContract : Contract {
                 println("passou content")
                 //signers
                 val oldOwner = bCoinTransferState.owner
-                val newOwner = bCoinTransferState.newOwner
 
-                "Todos os envolvidos devem assinar a transaction" using (command.signers.contains(oldOwner.owningKey)
-                                                                        .and(command.signers.contains(newOwner.owningKey)))
+                "O dono do dinheiro deve assinar" using (command.signers.contains(oldOwner.owningKey))
                 println("passou signer")
             }
             else -> throw IllegalArgumentException("Comando invalido e não reconhecido pelo sistema")

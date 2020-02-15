@@ -1,7 +1,7 @@
 package com.template
 
 
-import com.template.flows.IssueFlowInitiator
+import com.template.flows.CoinIssueFlow
 import com.template.flows.TransferFlow
 import com.template.states.BrunoCoinTransferState
 import net.corda.core.contracts.ContractState

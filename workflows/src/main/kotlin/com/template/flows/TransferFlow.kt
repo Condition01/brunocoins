@@ -46,14 +46,10 @@ object TransferFlow{
             val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
 //            val newOwnerNodeInfo = serviceHub.networkMapCache.getNodeByLegalIdentity(newOwner)
 
-            val otherPartySession = initiateFlow(newOwner)
-
-
             val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
             progressTracker.currentStep = GENERATING_TRANSACTION
             var txBuilder = buildTransaction(listMoneyStateAndRef, notary)
-            txBuilder = otherPartySession.sendAndReceive<TransactionBuilder>(txBuilder).unwrap{it}
 
             progressTracker.currentStep = VERIFYING_TRANSACTION
 
@@ -68,7 +64,7 @@ object TransferFlow{
 
             progressTracker.currentStep = FINALISING_TRANSACTION
 
-
+            val otherPartySession = initiateFlow(newOwner)
             otherPartySession.send(signedTransaction)
             return subFlow(FinalityFlow(signedTransaction, setOf(otherPartySession)))
         }
@@ -142,17 +138,17 @@ object TransferFlow{
         }
     }
 
-    @InitiatedBy(CoinTransferFlow::class)
-    class MoneyReferenceFlow(val otherPartySession: FlowSession) : FlowLogic<TransactionBuilder>() {
-        override fun call(): TransactionBuilder {
-            val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
-            val txBuilder = otherPartySession.receive<TransactionBuilder>().unwrap{ it }
-            return if(listMoneyStateAndRef.isNotEmpty()){
-                txBuilder.addInputState(listMoneyStateAndRef.single())
-                txBuilder
-            }else{
-                txBuilder
-            }
-        }
-    }
+//    @InitiatedBy(CoinTransferFlow::class)
+//    class MoneyReferenceFlow(val otherPartySession: FlowSession) : FlowLogic<TransactionBuilder>() {
+//        override fun call(): TransactionBuilder {
+//            val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
+//            val txBuilder = otherPartySession.receive<TransactionBuilder>().unwrap{ it }
+//            return if(listMoneyStateAndRef.isNotEmpty()){
+//                txBuilder.addInputState(listMoneyStateAndRef.single())
+//                txBuilder
+//            }else{
+//                txBuilder
+//            }
+//        }
+//    }
 }

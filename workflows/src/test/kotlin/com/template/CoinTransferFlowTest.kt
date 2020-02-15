@@ -1,6 +1,6 @@
 package com.template
 
-import com.template.flows.IssueFlowInitiator
+import com.template.flows.CoinIssueFlow
 import com.template.flows.TransferFlow
 import com.template.states.BrunoCoinState
 import com.template.states.BrunoCoinTransferState
@@ -23,11 +23,11 @@ class CoinTransferFlowTest : BaseTest(){
     }
 
     fun preIssueAValue(){
-        val coinIssueFlow = IssueFlowInitiator(300.00)
+        val coinIssueFlow = CoinIssueFlow(300.00)
         val future = nodeA.startFlow(coinIssueFlow)
         val signedTransaction = future.getOrThrow()
 //        network.runNetwork()
-        val coinIssueFlow2 = IssueFlowInitiator(300.00)
+        val coinIssueFlow2 = CoinIssueFlow(300.00)
         val future2 = nodeB.startFlow(coinIssueFlow2)
         val signedTransaction2 = future2.getOrThrow()
         network.runNetwork()

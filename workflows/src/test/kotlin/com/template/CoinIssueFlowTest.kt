@@ -1,6 +1,6 @@
 package com.template
 
-import com.template.flows.IssueFlowInitiator
+import com.template.flows.CoinIssueFlow
 import com.template.flows.TransferFlow
 import com.template.states.BrunoCoinState
 import net.corda.core.contracts.TransactionVerificationException
@@ -27,7 +27,7 @@ class CoinIssueFlowTest : BaseTest(){
 
     @Test
     fun vanillaCoinIssueTest(){
-        val coinIssueFlow = IssueFlowInitiator(300.00)
+        val coinIssueFlow = CoinIssueFlow(300.00)
         val future = nodeA.startFlow(coinIssueFlow)
         network.runNetwork()
         val signedTransaction = future.getOrThrow()
@@ -39,7 +39,7 @@ class CoinIssueFlowTest : BaseTest(){
 
     @Test
     fun illegalNegativeCoinIssueTest(){
-        val coinIssueFlow = IssueFlowInitiator(-300.00)
+        val coinIssueFlow = CoinIssueFlow(-300.00)
         val future = nodeA.startFlow(coinIssueFlow)
         network.runNetwork()
         assertFailsWith< TransactionVerificationException> { future.getOrThrow() }

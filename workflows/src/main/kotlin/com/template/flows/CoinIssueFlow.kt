@@ -17,7 +17,7 @@ import net.corda.core.utilities.ProgressTracker
 // *********
 @InitiatingFlow
 @StartableByRPC
-class IssueFlowInitiator(val amount : Double) : FlowLogic<UniqueIdentifier>() {
+class CoinIssueFlow(val amount : Double) : FlowLogic<UniqueIdentifier>() {
 
     companion object {
         object GENERATING_TRANSACTION : ProgressTracker.Step("Generating transaction based on new BrunoCoin.")

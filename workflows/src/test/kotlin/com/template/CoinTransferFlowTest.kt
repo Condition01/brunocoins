@@ -54,11 +54,14 @@ class CoinTransferFlowTest : BaseTest(){
         network.runNetwork()
         val signedTransaction = future.getOrThrow()
 
-        val bCoinStates = nodeA.allStates<BrunoCoinState>()
-        val bCoinTransferStatesNodeA = nodeA.allContractStates<BrunoCoinTransferState>()
-        val bCoinTransferStatesNodeB = nodeB.allContractStates<BrunoCoinTransferState>()
+        val bCoinStatesNodeA = nodeA.getAllLinearStatesWithAnyStatus<BrunoCoinState>()
+        val bCoinStatesNodeB = nodeB.getAllLinearStatesWithAnyStatus<BrunoCoinState>()
 
-        assertEquals(2, bCoinStates.states.size)
+        val bCoinTransferStatesNodeA = nodeA.getAllUnconsummedContractStates<BrunoCoinTransferState>()
+        val bCoinTransferStatesNodeB = nodeB.getAllUnconsummedContractStates<BrunoCoinTransferState>()
+
+        assertEquals(2, bCoinStatesNodeA.states.size)
+        assertEquals(2, bCoinStatesNodeA.states.size)
         assertEquals(1, bCoinTransferStatesNodeA.states.size)
         assertNotEquals(bCoinTransferStatesNodeA, bCoinTransferStatesNodeB)
         assertEquals(bCoinTransferStatesNodeA.states.size, bCoinTransferStatesNodeB.states.size)

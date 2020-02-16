@@ -42,42 +42,29 @@ class BrunoCoinContract : Contract {
                 //shape
                 "Não deve haver um inputState" using (tx.inputStates.size == 1)
 
-
-                "Devem haver 3 outputStates" using (tx.outputStates.size == 3)
+                "Devem haver 2 outputStates" using (tx.outputStates.size == 2)
                 println("passou shape")
                 //content
                 val inputStateOne = tx.getInput(0)
-
 
                 "O inputStateOne deve ser do tipo BrunoCoinState" using (inputStateOne is BrunoCoinState)
 
                 val outputStateOne = tx.getOutput(0)
 
-                "O primeiro outputState deve ser do tipo BrunoCoinState" using (outputStateOne is BrunoCoinState)
+                "O segundo outputState deve ser do tipo BrunoCoinTransferState" using (outputStateOne is BrunoCoinTransferState)
 
-                val outputStateTwo = tx.getOutput(1)
-
-                "O segundo outputState deve ser do tipo BrunoCoinTransferState" using (outputStateTwo is BrunoCoinTransferState)
-
-                val outPutStateThree = tx.getOutput(2)
-                "O terceiro outputState deve ser do tipo BrunoCoinState" using (outPutStateThree is BrunoCoinState)
+                val outPutStateTwo = tx.getOutput(1)
+                "O terceiro outputState deve ser do tipo BrunoCoinState" using (outPutStateTwo is BrunoCoinState)
 
                 val bCoinInpState = inputStateOne as BrunoCoinState
-                val bCoinOutState = outputStateOne as BrunoCoinState
-                val bCoinTransferState = outputStateTwo as BrunoCoinTransferState
-                val bCoinOutStateTwo = outPutStateThree as BrunoCoinState
+                val bCoinTransferState = outputStateOne as BrunoCoinTransferState
+                val bCoinOutState = outPutStateTwo as BrunoCoinState
 
-                "O owner do input deve ser diferente do owner do output" using (bCoinInpState.owner != bCoinOutState.owner)
+                "O valor transferido deve ser maior que 0" using (bCoinTransferState.amount > 0)
 
-                "O valor transferido deve ser maior que 0" using (bCoinOutState.amount > 0)
+                "O owner do input deve ser igual ao owner do outputStateTwo" using (bCoinOutState.owner == bCoinInpState.owner)
 
-                "O inputState deve ter valor igual ou maior que o outputState" using (bCoinInpState.amount >= bCoinOutState.amount)
-
-                "o outputStateOne deve ter o mesmo valor que o outputStateTwo" using (bCoinOutState.amount == bCoinTransferState.amount)
-
-                "O owner do input deve ser igual ao owner do outputStateTwo" using (bCoinOutStateTwo.owner == bCoinInpState.owner)
-
-                "O owner do input não pode ficar com um valor negativo na conta" using (bCoinOutStateTwo.amount >= 0)
+                "O owner do input não pode ficar com um valor negativo na conta" using (bCoinOutState.amount >= 0)
                 println("passou content")
                 //signers
                 val oldOwner = bCoinTransferState.owner

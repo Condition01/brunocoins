@@ -1,15 +1,9 @@
 package com.template
 
 import com.template.flows.CoinIssueFlow
-import com.template.flows.TransferFlow
 import com.template.states.BrunoCoinState
 import net.corda.core.contracts.TransactionVerificationException
-import net.corda.core.identity.CordaX500Name
 import net.corda.core.utilities.getOrThrow
-import net.corda.testing.node.MockNetwork
-import net.corda.testing.node.MockNetworkParameters
-import net.corda.testing.node.StartedMockNode
-import net.corda.testing.node.TestCordapp
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -33,7 +27,7 @@ class CoinIssueFlowTest : BaseTest(){
         val signedTransaction = future.getOrThrow()
 
 
-        val allStates = nodeA.allStates<BrunoCoinState>()
+        val allStates = nodeA.getAllLinearStatesWithAnyStatus<BrunoCoinState>()
 
     }
 
@@ -44,8 +38,5 @@ class CoinIssueFlowTest : BaseTest(){
         network.runNetwork()
         assertFailsWith< TransactionVerificationException> { future.getOrThrow() }
     }
-//
-//    @Test
-//    fun testTheVault
 
 }

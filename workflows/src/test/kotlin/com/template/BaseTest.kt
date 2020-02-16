@@ -49,16 +49,16 @@ open class BaseTest{
     @After
     open fun tearDown() = network.stopNodes()
 
-    protected inline fun <reified T : LinearState> StartedMockNode.allStates(linearId : UniqueIdentifier? = null) : Vault.Page<T>{
+    protected inline fun <reified T : LinearState> StartedMockNode.getAllLinearStatesWithAnyStatus(linearId : UniqueIdentifier? = null) : Vault.Page<T>{
         val queryAllStatusServiceProvider =
                 if(linearId != null)
                     QueryCriteria.LinearStateQueryCriteria(linearId = listOf(linearId), status = Vault.StateStatus.ALL)
                 else
                     QueryCriteria.LinearStateQueryCriteria(status = Vault.StateStatus.ALL)
-        return services.vaultService.queryBy<T>(queryAllStatusServiceProvider)
+        return services.vaultService.queryBy(queryAllStatusServiceProvider)
     }
 
-    protected inline fun <reified T : ContractState> StartedMockNode.allContractStates() : Vault.Page<T>{
+    protected inline fun <reified T : ContractState> StartedMockNode.getAllUnconsummedContractStates() : Vault.Page<ContractState>{
         val queryAllStatusServiceProvider = QueryCriteria.VaultQueryCriteria(status = Vault.StateStatus.UNCONSUMED)
         return services.vaultService.queryBy<T>(queryAllStatusServiceProvider)
     }

@@ -65,7 +65,8 @@ object TransferFlow{
             progressTracker.currentStep = FINALISING_TRANSACTION
 
             val otherPartySession = initiateFlow(newOwner)
-            otherPartySession.send(signedTransaction)
+           val test = otherPartySession.sendAndReceive<StateAndRef<BrunoCoinState>>(signedTransaction)
+            println(test)
             return subFlow(FinalityFlow(signedTransaction, setOf(otherPartySession)))
         }
 
@@ -132,6 +133,9 @@ object TransferFlow{
 
             verifyTx(sgdTx)
 
+            val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
+
+            otherPartySession.send(listMoneyStateAndRef.single())
             progressTracker.currentStep = FINALISING_TRANSACTION
 
             return subFlow(ReceiveFinalityFlow(otherPartySession/*, expectedTxId = txId*/))

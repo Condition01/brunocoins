@@ -46,10 +46,14 @@ object TransferFlow{
             val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
 //            val newOwnerNodeInfo = serviceHub.networkMapCache.getNodeByLegalIdentity(newOwner)
 
+//            val newState = listMoneyStateAndRef.single().state.data.copy(s)
+
             val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
             progressTracker.currentStep = GENERATING_TRANSACTION
-            var txBuilder = buildTransaction(listMoneyStateAndRef, notary)
+            val txBuilder = buildTransaction(listMoneyStateAndRef, notary)
+
+            txBuilder.possibleGetPartnerInputs(counterParty = newOwner, amount = this.amount)
 
             progressTracker.currentStep = VERIFYING_TRANSACTION
 
@@ -69,8 +73,21 @@ object TransferFlow{
             return subFlow(FinalityFlow(signedTransaction, setOf(otherPartySession)))
         }
 
+        private fun TransactionBuilder.possibleGetPartnerInputs(counterParty : Party, amount: Double) {
+            val partnerOutputState : BrunoCoinState
+            if(subFlow(VerifyIfPartnerHasActiveWalletFlow.VerifyPartnerWalletFlowRequest(counterParty))){
+                val partnerInput = subFlow(PartyWalletFlow.MoneyStateRequestFlow(counterParty))
+                val partnerInputState = partnerInput.state.data
+                partnerOutputState = partnerInputState.copy(amount = partnerInputState.amount + amount)
+            }else{
+                partnerOutputState = BrunoCoinState(amount = amount, owner = newOwner)
+
+            }
+            this.addOutputState(partnerOutputState)
+        }
+
         private fun buildTransaction(listMoneyStateAndRef: List<StateAndRef<BrunoCoinState>>, notary: Party): TransactionBuilder {
-            val bCoinOutPutState = BrunoCoinState(amount = amount, owner = newOwner)
+
             val bCoinTransferOutputState = BrunoCoinTransferState(
                     owner = serviceHub.myInfo.legalIdentities.first(),
                     newOwner = newOwner,
@@ -78,14 +95,14 @@ object TransferFlow{
             )
             val txCommand = Command(BrunoCoinContract.Commands.Transfer(), serviceHub.myInfo.legalIdentities.first().owningKey)
             val txBuilder = TransactionBuilder(notary)
-                    .addOutputState(bCoinOutPutState)
+
                     .addOutputState(bCoinTransferOutputState, BrunoCoinContract.ID)
                     .addCommand(txCommand)
             if (listMoneyStateAndRef.isNotEmpty()) {
-                val ownerBCoinState = listMoneyStateAndRef.single().state.data
+                val olderState = listMoneyStateAndRef.single().state.data
+                val ownerNewBCoinState = olderState.copy(amount = olderState.amount - this.amount)
                 txBuilder.addInputState(listMoneyStateAndRef.single())
-                txBuilder.addOutputState(
-                        BrunoCoinState(owner = ownerBCoinState.owner, amount = ownerBCoinState.amount - amount))
+                txBuilder.addOutputState(ownerNewBCoinState)
             }
             return txBuilder
         }

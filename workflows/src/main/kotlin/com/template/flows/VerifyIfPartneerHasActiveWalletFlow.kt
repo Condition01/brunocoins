@@ -2,20 +2,15 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.states.BrunoCoinState
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.StateRef
-import net.corda.core.crypto.SecureHash
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
-import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
-import javax.swing.plaf.nimbus.State
 
-object PartyWalletFlow{
+object VerifyIfPartnerHasActiveWalletFlow{
     @InitiatingFlow
     @StartableByRPC
-    class MoneyStateRequestFlow(val otherParty : Party) : FlowLogic<StateAndRef<BrunoCoinState>>() {
+    class VerifyPartnerWalletFlowRequest(val otherParty : Party) : FlowLogic<Boolean>() {
         companion object {
             object REQUESTING_PARTNER_INPUT : ProgressTracker.Step("Requesting to partner to put inputs in the transaction")
             object SENDING_BACK_TO_TRANSCTION : ProgressTracker.Step("Sending back to the transaction")
@@ -30,26 +25,27 @@ object PartyWalletFlow{
         override val progressTracker = tracker()
 
         @Suspendable
-        override fun call(): StateAndRef<BrunoCoinState> {
+        override fun call(): Boolean{
             val otherPartySession = initiateFlow(otherParty)
             progressTracker.currentStep = REQUESTING_PARTNER_INPUT
-            val otherPartyWallet = otherPartySession.receive<StateAndRef<BrunoCoinState>>().unwrap{ it }
+            val otherPartyHasActiveWallet = otherPartySession.sendAndReceive<Boolean>("1").unwrap{ it }
             progressTracker.currentStep = SENDING_BACK_TO_TRANSCTION
-            return otherPartyWallet
+            return otherPartyHasActiveWallet
         }
     }
 
-    @InitiatedBy(MoneyStateRequestFlow::class)
-    class MoneyStateReponseFlow(val otherPartySession: FlowSession) : FlowLogic<Unit>() {
-
+    @InitiatedBy(VerifyPartnerWalletFlowRequest::class)
+    class VerifyPartnerWalletFlowResponse(val otherPartySession: FlowSession) : FlowLogic<Unit>() {
         @Suspendable
         override fun call() {
+            otherPartySession.receive<String>().unwrap{it}
+
             val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
 
             if(listMoneyStateAndRef.isNotEmpty()){
-                otherPartySession.send(listMoneyStateAndRef.single())
+                otherPartySession.send(true)
             }else{
-                throw IllegalArgumentException("Counter party não possui uma carteira ativa")
+                otherPartySession.send(false)
             }
         }
     }

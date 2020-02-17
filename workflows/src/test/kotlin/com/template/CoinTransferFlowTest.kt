@@ -55,6 +55,7 @@ class CoinTransferFlowTest : BaseTest(){
         val signedTransaction = future.getOrThrow()
 
         val bCoinStates = nodeA.allStates<BrunoCoinState>()
+        val bCoinStatesB = nodeB.allStates<BrunoCoinState>()
         val bCoinTransferStatesNodeA = nodeA.allContractStates<BrunoCoinTransferState>()
         val bCoinTransferStatesNodeB = nodeB.allContractStates<BrunoCoinTransferState>()
 

@@ -10,11 +10,11 @@ import javax.persistence.Column
 import javax.persistence.Entity
 import javax.persistence.Table
 
-object BrunoCoinTranseferSchema
+object BrunoCoinTransferSchema
 
 @CordaSerializable
 object BrunoCoinTransferSchemaV1 : MappedSchema(
-        schemaFamily = BrunoCoinTranseferSchema.javaClass,
+        schemaFamily = BrunoCoinTransferSchema.javaClass,
         version = 1,
         mappedTypes = listOf(BrunoCoinTransferState::class.java)
 ){

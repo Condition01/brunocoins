@@ -4,7 +4,6 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.BrunoCoinContract
 import com.template.states.BrunoCoinState
 import com.template.states.BrunoCoinTransferState
-import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -44,18 +43,14 @@ object TransferFlow{
         @Suspendable
         override fun call(): SignedTransaction {
             val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
-//            val newOwnerNodeInfo = serviceHub.networkMapCache.getNodeByLegalIdentity(newOwner)
 
-            val otherPartySession = initiateFlow(newOwner)
-
-//            val otherP = otherPartySession.receive<StateAndRef<BrunoCoinState>>().unwrap{ it }
+            val listOfStatesUsedToTransfer = getStatesNecessaryToTransact(listMoneyStateAndRef)
 
             val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
             progressTracker.currentStep = GENERATING_TRANSACTION
 
-            var txBuilder = buildTransaction(listMoneyStateAndRef, notary)
-//            txBuilder.addInputState(otherP)
+            val txBuilder = buildTransaction(listOfStatesUsedToTransfer, notary)
 
             progressTracker.currentStep = VERIFYING_TRANSACTION
 
@@ -69,32 +64,39 @@ object TransferFlow{
 
 
             progressTracker.currentStep = FINALISING_TRANSACTION
-
+            val otherPartySession = initiateFlow(newOwner)
 
             otherPartySession.send(signedTransaction)
             return subFlow(FinalityFlow(signedTransaction, setOf(otherPartySession)))
         }
 
-        private fun buildTransaction(listMoneyStateAndRef: List<StateAndRef<BrunoCoinState>>, notary: Party): TransactionBuilder {
-            val bCoinOutPutState = BrunoCoinState(amount = amount, owner = newOwner)
-            val bCoinTransferOutputState = BrunoCoinTransferState(
-                    owner = serviceHub.myInfo.legalIdentities.first(),
-                    newOwner = newOwner,
-                    amount = amount
-            )
-            val txCommand = Command(BrunoCoinContract.Commands.Transfer(), serviceHub.myInfo.legalIdentities.first().owningKey)
-            val txBuilder = TransactionBuilder(notary)
-                    .addOutputState(bCoinOutPutState)
-                    .addOutputState(bCoinTransferOutputState, BrunoCoinContract.ID)
-                    .addCommand(txCommand)
-            if (listMoneyStateAndRef.isNotEmpty()) {
-                val ownerBCoinState = listMoneyStateAndRef.single().state.data
-                txBuilder.addInputState(listMoneyStateAndRef.single())
-                txBuilder.addOutputState(
-                        BrunoCoinState(owner = ownerBCoinState.owner, amount = ownerBCoinState.amount - amount))
+        private fun getStatesNecessaryToTransact(listMoneyStateAndRef: List<StateAndRef<BrunoCoinState>>): List<StateAndRef<BrunoCoinState>> {
+            var total = 0.00
+            val returnedLIst = mutableListOf<StateAndRef<BrunoCoinState>>()
+             listMoneyStateAndRef.forEach {
+                 total += it.state.data.amount
+                 returnedLIst.add(it)
+                 if (total >= this.amount) return@forEach
             }
-            return txBuilder
+            if(total < this.amount) throw IllegalArgumentException("Não há valores suficientes para realizar essa transferência")
+            return returnedLIst
         }
+
+        private fun buildTransaction(listOfStatesUsedToTransfer: List<StateAndRef<BrunoCoinState>>, notary: Party): TransactionBuilder =
+           TransactionBuilder(notary)
+                   .apply {
+                       listOfStatesUsedToTransfer.forEach {
+                           addInputState(it)
+                       }
+                       addOutputState(BrunoCoinTransferState(owner = serviceHub.myInfo.legalIdentities.first(),
+                               newOwner = newOwner, amount = amount), BrunoCoinContract.ID)
+                       addOutputState(BrunoCoinState(owner = newOwner, amount = amount))
+                       addOutputState(BrunoCoinState(owner = serviceHub.myInfo.legalIdentities.first(),
+                                       amount = listOfStatesUsedToTransfer.map { it.state.data.amount }.sum() - amount))
+                       addCommand(BrunoCoinContract.Commands.Transfer(), serviceHub.myInfo.legalIdentities.first().owningKey,
+                               newOwner.owningKey)
+                   }
+
 
     }
 
@@ -116,24 +118,19 @@ object TransferFlow{
         @Suspendable
         override fun call(): SignedTransaction {
 
-//
-//            val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
-//
-//            otherPartySession.send(listMoneyStateAndRef.single())
-
             fun verifyTx(sgdTx : SignedTransaction) = requireThat {
-                "O output precisa ser do tipo BrunoCoinState"  using (sgdTx.tx.outputStates[0] is BrunoCoinState)
-
-                val bCoinState = sgdTx.tx.outputStates[0] as BrunoCoinState
-
-                "O output2 precisa ser do tipo BrunoCoinTransferState" using (sgdTx.tx.outputStates[1] is BrunoCoinTransferState)
-
-                val bCoinTransferState = sgdTx.tx.outputStates[1] as BrunoCoinTransferState
-
-                "Os valores propostos na transação deve ser maior que 0" using (bCoinState.amount > 0
-                        && bCoinTransferState.amount > 0)
-
-                "Os valores propostos na transação e o valor enviados devem ser iguais" using (bCoinState.amount == bCoinTransferState.amount)
+//                "O output precisa ser do tipo BrunoCoinState"  using (sgdTx.tx.outputStates[0] is BrunoCoinState)
+//
+//                val bCoinState = sgdTx.tx.outputStates[0] as BrunoCoinState
+//
+//                "O output2 precisa ser do tipo BrunoCoinTransferState" using (sgdTx.tx.outputStates[1] is BrunoCoinTransferState)
+//
+//                val bCoinTransferState = sgdTx.tx.outputStates[1] as BrunoCoinTransferState
+//
+//                "Os valores propostos na transação deve ser maior que 0" using (bCoinState.amount > 0
+//                        && bCoinTransferState.amount > 0)
+//
+//                "Os valores propostos na transação e o valor enviados devem ser iguais" using (bCoinState.amount == bCoinTransferState.amount)
             }
 
 
@@ -148,18 +145,4 @@ object TransferFlow{
             return subFlow(ReceiveFinalityFlow(otherPartySession/*, expectedTxId = txId*/))
         }
     }
-
-//    @InitiatedBy(CoinTransferFlow::class)
-//    class MoneyReferenceFlow(val otherPartySession: FlowSession) : FlowLogic<TransactionBuilder>() {
-//        override fun call(): TransactionBuilder {
-//            val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
-//            val txBuilder = otherPartySession.receive<TransactionBuilder>().unwrap{ it }
-//            return if(listMoneyStateAndRef.isNotEmpty()){
-//                txBuilder.addInputState(listMoneyStateAndRef.single())
-//                txBuilder
-//            }else{
-//                txBuilder
-//            }
-//        }
-//    }
 }

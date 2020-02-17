@@ -8,7 +8,6 @@ import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
-import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 
@@ -36,15 +35,12 @@ class CoinIssueFlow(val amount : Double) : FlowLogic<UniqueIdentifier>() {
 
     @Suspendable
     override fun call() : UniqueIdentifier {
-        // Initiator flow logic goes here.
-        val listMoneyStateAndRef = serviceHub.vaultService.queryBy(BrunoCoinState::class.java).states
-
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
         progressTracker.currentStep = GENERATING_TRANSACTION
 
-        val bIssueState = brunoCoinStateBuilding(listMoneyStateAndRef)
+        val bIssueState = BrunoCoinState(owner = serviceHub.myInfo.legalIdentities.first(), amount = amount)
 
-        val tx = buildTransaction(bIssueState, notary, listMoneyStateAndRef)
+        val tx = buildTransaction(bIssueState, notary)
 
         progressTracker.currentStep = VERIFYING_TRANSACTION
         tx.verify(serviceHub)
@@ -58,21 +54,14 @@ class CoinIssueFlow(val amount : Double) : FlowLogic<UniqueIdentifier>() {
     }
 
     private fun buildTransaction(bIssueState: BrunoCoinState,
-                                        notary: Party,
-                                        listMoneyStateAndRef: List<StateAndRef<BrunoCoinState>>): TransactionBuilder {
+                                        notary: Party): TransactionBuilder {
         val txCommand = Command(BrunoCoinContract.Commands.Issue(), bIssueState.participants.map { it.owningKey })
-        val tx = TransactionBuilder(notary)
+        return TransactionBuilder(notary)
                 .addOutputState(bIssueState, BrunoCoinContract.ID)
                 .addCommand(txCommand)
-        if (listMoneyStateAndRef.isNotEmpty()) tx.addInputState(listMoneyStateAndRef.single())
-        return tx
     }
 
-    private fun brunoCoinStateBuilding(bCoinStateAndRefList: List<StateAndRef<BrunoCoinState>>) =
-            if (bCoinStateAndRefList.isNotEmpty())
-                BrunoCoinState(owner = serviceHub.myInfo.legalIdentities.first(), amount = bCoinStateAndRefList.first().state.data.amount + amount)
-            else
-                BrunoCoinState(owner = serviceHub.myInfo.legalIdentities.first(), amount = amount)
+
 }
 
 

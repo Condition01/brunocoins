@@ -1,7 +1,6 @@
 package com.template.states
 
 import com.template.contracts.BrunoCoinContract
-import com.template.schemas.BrunoCoinTransferSchemaV1
 import net.corda.core.contracts.BelongsToContract
 import net.corda.core.contracts.CommandAndState
 import net.corda.core.contracts.ContractState
@@ -20,25 +19,25 @@ data class BrunoCoinTransferState(
         val owner : Party,
         val newOwner : Party,
         val amount : Double
-) : ContractState, QueryableState{
+) : ContractState /*, QueryableState*/{
     override val participants: List<AbstractParty> get() = listOf(owner,newOwner)
 
 
-    override fun generateMappedObject(schema: MappedSchema): PersistentState {
-        return when(schema){
-            is BrunoCoinTransferSchemaV1 -> {
-                BrunoCoinTransferSchemaV1.PersistentBrunoCoinTransferState(
-                        owner = owner,
-                        newOwner = newOwner,
-                        amount = amount,
-                        ownerKeyHash = owner.owningKey.hash.toString(),
-                        newOwnerKeyHash = newOwner.owningKey.hash.toString()
-                )
-            }
-            else -> throw IllegalArgumentException("Not supported schema $schema")
-        }
-    }
-
-    override fun supportedSchemas(): Iterable<MappedSchema> = listOf(BrunoCoinTransferSchemaV1)
+//    override fun generateMappedObject(schema: MappedSchema): PersistentState {
+//        return when(schema){
+//            is BrunoCoinTransferSchemaV1 -> {
+//                BrunoCoinTransferSchemaV1.PersistentBrunoCoinTransferState(
+//                        owner = owner,
+//                        newOwner = newOwner,
+//                        amount = amount,
+//                        ownerKeyHash = owner.owningKey.hash.toString(),
+//                        newOwnerKeyHash = newOwner.owningKey.hash.toString()
+//                )
+//            }
+//            else -> throw IllegalArgumentException("Not supported schema $schema")
+//        }
+//    }
+//
+//    override fun supportedSchemas(): Iterable<MappedSchema> = listOf(BrunoCoinTransferSchemaV1)
 
 }

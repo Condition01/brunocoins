@@ -40,7 +40,7 @@ class BrunoCoinContract : Contract {
             }
             is Commands.Transfer -> requireThat {
                 //shape
-                "Não deve haver um inputState" using (tx.inputStates.size <= 2)
+                "Não deve haver um inputState" using (tx.inputStates.size == 1)
 
 
                 "Devem haver 3 outputStates" using (tx.outputStates.size == 3)

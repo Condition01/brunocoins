@@ -85,6 +85,7 @@ object TransferFlow{
         private fun buildTransaction(listOfStatesUsedToTransfer: List<StateAndRef<BrunoCoinState>>, notary: Party): TransactionBuilder =
            TransactionBuilder(notary)
                    .apply {
+
                        listOfStatesUsedToTransfer.forEach {
                            addInputState(it)
                        }
@@ -93,8 +94,7 @@ object TransferFlow{
                        addOutputState(BrunoCoinState(owner = newOwner, amount = amount))
                        addOutputState(BrunoCoinState(owner = serviceHub.myInfo.legalIdentities.first(),
                                        amount = listOfStatesUsedToTransfer.map { it.state.data.amount }.sum() - amount))
-                       addCommand(BrunoCoinContract.Commands.Transfer(), serviceHub.myInfo.legalIdentities.first().owningKey,
-                               newOwner.owningKey)
+                       addCommand(BrunoCoinContract.Commands.Transfer(), serviceHub.myInfo.legalIdentities.first().owningKey)
                    }
 
 

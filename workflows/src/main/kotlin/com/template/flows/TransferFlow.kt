@@ -74,9 +74,9 @@ object TransferFlow{
             var total = 0.00
             val returnedLIst = mutableListOf<StateAndRef<BrunoCoinState>>()
              listMoneyStateAndRef.forEach {
+                 if (total >= this.amount) return@forEach
                  total += it.state.data.amount
                  returnedLIst.add(it)
-                 if (total >= this.amount) return@forEach
             }
             if(total < this.amount) throw IllegalArgumentException("Não há valores suficientes para realizar essa transferência")
             return returnedLIst
